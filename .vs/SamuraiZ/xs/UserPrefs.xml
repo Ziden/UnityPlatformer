@@ -1,0 +1,40 @@
+﻿<Properties StartupConfiguration="{8168537B-4599-915F-3801-17D10B2CBA01}|">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Code/Behaviours/Player/PlayerBhv.cs">
+    <Files>
+      <File FileName="Assets/Code/Behaviours/SamuraiCamera.cs" Line="13" Column="34" />
+      <File FileName="Assets/Code/Behaviours/Background.cs" />
+      <File FileName="Assets/Code/Behaviours/Player/CharacterCollider.cs" />
+      <File FileName="Assets/Code/Behaviours/Player/PlayerDebug.cs" />
+      <File FileName="Assets/Code/Direction.cs" />
+      <File FileName="Assets/Code/Behaviours/EffectManager.cs" Line="44" Column="53" />
+      <File FileName="Assets/Code/Behaviours/Player/PlayerBhv.cs" Line="41" Column="19" />
+      <File FileName="Assets/Code/Behaviours/Player/PlayerState.cs" Line="5" Column="26" />
+      <File FileName="Assets/Code/DebugScript.cs" Line="1" Column="1" />
+      <File FileName="Assets/Code/Behaviours/Player/TransformUtils.cs" Line="17" Column="26" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="SamuraiZ" expanded="True">
+            <Node name="Assets" expanded="True">
+              <Node name="Code" expanded="True">
+                <Node name="Behaviours" expanded="True">
+                  <Node name="Player" expanded="True">
+                    <Node name="PlayerBhv.cs" selected="True" />
+                  </Node>
+                </Node>
+              </Node>
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="39291163-c83d-4425-a68b-fe6b99d3677e" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>
