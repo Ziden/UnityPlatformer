@@ -1,0 +1,6 @@
+﻿using System;
+public enum PlayerState
+{
+    JUMPING, FALLING, IDLLE, ONGROUND, MOVING_LEFT, MOVING_RIGHT,
+    FAST_FALLING, DASHING
+}
