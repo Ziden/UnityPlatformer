@@ -65,7 +65,6 @@
   <ItemGroup>
     <Compile Include="Assets\Code\Behaviours\Background.cs" />
     <Compile Include="Assets\Code\Behaviours\EffectManager.cs" />
-    <Compile Include="Assets\Code\Behaviours\LevelBhv.cs" />
     <Compile Include="Assets\Code\Behaviours\Player\CharacterCollider.cs" />
     <Compile Include="Assets\Code\Behaviours\Player\PlayerBhv.cs" />
     <Compile Include="Assets\Code\Behaviours\Player\PlayerDebug.cs" />
