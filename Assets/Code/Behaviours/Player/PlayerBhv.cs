@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -20,15 +21,18 @@ public class PlayerBhv : MonoBehaviour
     public float jumpPower = 6f;
     public float maxJumpHeight = 2f;
     public float gravityPull = 0.3f;
-    public float yCollisionCorrection = 0.2f;
+    public float yCollisionCorrection = 0.20f;
+    public float xCollisionCorrection = 0.65f;
     public float fastFallRate = 2f;
     public float dashLength = 3.2f;
     public float dashPower = 2.5f;
+    public float attackDelay = 0.00f;
+    public float landYAdjust = 0.00f;
 
     // State values
     public float currentJumpSize = 0f;
     public float currentDashSize = 0f;
-
+    public float lastFirstAttack = 0f;
 
     // Animation EFfects
     private EffectConfig fastFallEffect;
@@ -47,16 +51,13 @@ public class PlayerBhv : MonoBehaviour
 
     void Update()
     {
-        ReadInput();  
+        ReadInput();
         Physics();
         UpdateAnimations();
         states.ClearHistory();
     }
 
-    ////////////
-    /// INPUT //
-    ////////////
-
+    #region Input
     public void ReadInput()
     {
         var inAir = states.Has(PlayerState.JUMPING) || states.Has(PlayerState.FALLING);
@@ -64,13 +65,14 @@ public class PlayerBhv : MonoBehaviour
         // RIGHT
         if (Input.GetKeyDown(KeyCode.D))
         {
-            if(!states.Has(PlayerState.DASHING) || inAir)
+            if (!states.Has(PlayerState.DASHING) || inAir)
             {
                 states.Add(PlayerState.MOVING_RIGHT);
                 states.Remove(PlayerState.MOVING_LEFT);
-            } else if(states.Has(PlayerState.DASHING) && !facingRight)
+            }
+            else if (states.Has(PlayerState.DASHING) && !facingRight)
             {
-                cancelDash();
+                ResetMovement();
             }
         }
         if (Input.GetKeyUp(KeyCode.D))
@@ -89,7 +91,7 @@ public class PlayerBhv : MonoBehaviour
             }
             else if (states.Has(PlayerState.DASHING) && facingRight)
             {
-                cancelDash();
+                ResetMovement();
             }
         }
         if (Input.GetKeyUp(KeyCode.A))
@@ -99,24 +101,35 @@ public class PlayerBhv : MonoBehaviour
         }
 
         // DOWN
-        if(Input.GetKeyDown(KeyCode.S))
+        if (Input.GetKeyDown(KeyCode.S))
         {
             if (states.Has(PlayerState.FALLING))
             {
                 states.Add(PlayerState.FAST_FALLING);
 
                 EffectManager.Play(fastFallEffect);
-            } 
+            }
+        }
+
+        // ATTACK
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+
+            if(!states.Has(PlayerState.ATTACKING))
+                states.Add(PlayerState.ATTACKING);
+            else
+                states.Add(PlayerState.CONTINUE_ATTACK);
         }
 
         // JUMP
-        if(Input.GetKeyDown(KeyCode.J) && states.Has(PlayerState.ONGROUND)) {
+        if (Input.GetKeyDown(KeyCode.J) && states.Has(PlayerState.ONGROUND))
+        {
 
             // DASHING
             if (Input.GetKey(KeyCode.S))
             {
 
-                if(currentDashSize > 0 && currentDashSize < dashLength * 0.8f)
+                if (currentDashSize > 0 && currentDashSize < dashLength * 0.8f)
                 {
                     return;
                 }
@@ -128,22 +141,22 @@ public class PlayerBhv : MonoBehaviour
                     states.Add(PlayerState.MOVING_RIGHT);
                 else
                     states.Add(PlayerState.MOVING_LEFT);
-            } else
+            }
+            else
             {
                 states.Add(PlayerState.JUMPING);
             }
-                
-        } else if(Input.GetKeyUp(KeyCode.J) && states.Has(PlayerState.JUMPING))
+
+        }
+        else if (Input.GetKeyUp(KeyCode.J) && states.Has(PlayerState.JUMPING))
         {
             states.Remove(PlayerState.JUMPING);
             states.Add(PlayerState.FALLING);
         }
     }
+    #endregion
 
-    /////////////////
-    /// ANIMATIONS //
-    /////////////////
-
+    #region Animations
     public void UpdateAnimations()
     {
         if (!states.BeenModified())
@@ -158,7 +171,7 @@ public class PlayerBhv : MonoBehaviour
         }
 
         // Falling
-        if (states.WasAdded(PlayerState.FALLING))
+        if (states.WasAdded(PlayerState.FALLING) && !states.Has(PlayerState.ATTACKING))
         {
             // Falling Roll
             animation.speed = 2 - (currentJumpSize * 100 / maxJumpHeight) / 100;
@@ -178,9 +191,28 @@ public class PlayerBhv : MonoBehaviour
 
         }
 
+        // Always revert animation speed changes when you hit the ground
         if (states.WasAdded(PlayerState.ONGROUND))
         {
             animation.speed = 1;
+        }
+
+
+        // Attacking animation
+        if (states.WasAdded(PlayerState.ATTACKING))
+        {
+            var timeUntilLastAttack = Time.time - lastFirstAttack;
+            var clipName = "s_sword";
+            if (animation.GetCurrentAnimatorClipInfo(0)[0].clip.name == clipName || timeUntilLastAttack < 1)
+            {
+                clipName = "s_sword_2";
+                lastFirstAttack = 0;
+            }
+            else
+                lastFirstAttack = Time.time;
+
+            animation.Play(clipName);
+            StartCoroutine(FinishAttack());
         }
 
         // Running animation
@@ -209,7 +241,7 @@ public class PlayerBhv : MonoBehaviour
             }
 
             // Starting movement
-            if (startedToMove || states.WasAdded(PlayerState.ONGROUND))
+            if (!states.Has(PlayerState.ATTACKING) && startedToMove || states.WasAdded(PlayerState.ONGROUND))
             {
                 if (states.Has(PlayerState.MOVING_RIGHT))
                 {
@@ -224,11 +256,9 @@ public class PlayerBhv : MonoBehaviour
             }
         }
     }
+    #endregion
 
-    /////////////////
-    /// PHYSICS    //
-    /////////////////
-
+    #region Physics
     public void Physics()
     {
         float delta = Time.deltaTime;
@@ -238,13 +268,14 @@ public class PlayerBhv : MonoBehaviour
         {
             velocity.y = jumpPower;
             currentJumpSize = 0;
-            if(states.Has(PlayerState.DASHING))
+            if (states.Has(PlayerState.DASHING))
             {
-                if(Input.GetKey(KeyCode.A))
+                if (Input.GetKey(KeyCode.A))
                 {
                     states.Remove(PlayerState.MOVING_RIGHT);
                     states.Add(PlayerState.MOVING_LEFT);
-                } else if(Input.GetKey(KeyCode.D))
+                }
+                else if (Input.GetKey(KeyCode.D))
                 {
                     states.Add(PlayerState.MOVING_RIGHT);
                     states.Remove(PlayerState.MOVING_LEFT);
@@ -273,25 +304,25 @@ public class PlayerBhv : MonoBehaviour
         if (states.Has(PlayerState.DASHING))
         {
 
-            if(states.WasAdded(PlayerState.DASHING))
+            if (states.WasAdded(PlayerState.DASHING))
                 currentDashSize = 0;
 
             moveSpeed = speed * dashPower;
             currentDashSize += moveSpeed * delta;
-            if(states.Has(PlayerState.ONGROUND) && currentDashSize >= dashLength)
+            if (states.Has(PlayerState.ONGROUND) && currentDashSize >= dashLength)
             {
-                cancelDash();
+                ResetMovement();
                 moveSpeed = 0;
             }
         }
         if (states.Has(PlayerState.MOVING_RIGHT))
         {
-            if (map.GetTile(GetPlayerTile(new Vector2(0.25f, correction))) == null)
+            if (map.GetTile(GetPlayerTile(new Vector2(xCollisionCorrection, correction))) == null)
                 velocity.x = moveSpeed;
         }
         else if (states.Has(PlayerState.MOVING_LEFT))
         {
-            if (map.GetTile(GetPlayerTile(new Vector2(-0.25f, correction))) == null)
+            if (map.GetTile(GetPlayerTile(new Vector2(-xCollisionCorrection, correction))) == null)
                 velocity.x = -moveSpeed;
         }
 
@@ -321,11 +352,9 @@ public class PlayerBhv : MonoBehaviour
 
         transform.Translate(velocity * delta);
     }
+    #endregion
 
-    /////////////////
-    /// COLLISIONS //
-    /////////////////
-
+    #region Collisions
     public void OnCollisionLeave(BodyPart part, Collision2D uncollided)
     {
         var leftTag = uncollided.transform.tag;
@@ -361,6 +390,8 @@ public class PlayerBhv : MonoBehaviour
             if (part == BodyPart.FEET)
             {
 
+                Debug.Log("LAND");
+
                 // Landing
                 states.Remove(PlayerState.FAST_FALLING);
                 states.Remove(PlayerState.FALLING);
@@ -375,7 +406,7 @@ public class PlayerBhv : MonoBehaviour
                     TransformUtils.FaceRight(this, states.Has(PlayerState.MOVING_RIGHT));
                     animation.Play("s_run");
                 }
-                transform.position = new Vector2(transform.position.x, point.y + 0.42f);
+                transform.position = new Vector2(transform.position.x, point.y + landYAdjust);
 
                 EffectManager.Play(landSmokeEffect);
             }
@@ -388,10 +419,14 @@ public class PlayerBhv : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Functions
+
     public Vector3Int GetPlayerTile(Vector2? offset = null)
     {
         var position = transform.position;
-        if(offset.HasValue)
+        if (offset.HasValue)
             position += (Vector3)offset.Value;
         return new Vector3Int((int)Math.Round(position.x), (int)Math.Floor(position.y), 0);
     }
@@ -429,20 +464,49 @@ public class PlayerBhv : MonoBehaviour
         };
     }
 
-    private void cancelDash()
+    private bool ResetMovement()
     {
         states.Remove(PlayerState.DASHING);
         states.Remove(PlayerState.MOVING_LEFT);
         states.Remove(PlayerState.MOVING_RIGHT);
-
+        currentDashSize = 0;
         if (Input.GetKey(KeyCode.A))
         {
             states.Add(PlayerState.MOVING_LEFT);
+            return true;
         }
         else if (Input.GetKey(KeyCode.D))
         {
             states.Add(PlayerState.MOVING_RIGHT);
+            return true;
         }
-        currentDashSize = 0;
+      
+        return false;
     }
+
+    private IEnumerator FinishAttack()
+    {
+        yield return new WaitForSeconds(0.2f);
+        states.Remove(PlayerState.ATTACKING);
+        if (states.Has(PlayerState.CONTINUE_ATTACK))
+        {
+            Debug.Log("Continued Attack");
+            states.Add(PlayerState.ATTACKING);
+            states.Remove(PlayerState.CONTINUE_ATTACK);
+        }
+        else
+        {
+            if (!ResetMovement())
+            {
+                var clipInfo = animation.GetCurrentAnimatorClipInfo(0)[0];
+                if (clipInfo.clip.name.Contains("s_sword"))
+                    if (clipInfo.clip.name.Contains("2"))
+                        animation.Play("s_sword_keep_2");
+                    else
+                        animation.Play("s_sword_keep");
+            }
+        }
+    }
+
+    #endregion  
 }
